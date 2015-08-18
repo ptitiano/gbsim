@@ -56,7 +56,7 @@ void abort()
 
 void usage(void)
 {
-	fprintf(stderr, "Usage: looptest TEST [SIZE] ITERATIONS [SYSPATH] [DBGPATH]\n\n"
+	fprintf(stderr, "Usage: loopback_test TEST [SIZE] ITERATIONS [SYSPATH] [DBGPATH]\n\n"
 	"  Run TEST for a number of ITERATIONS with operation data SIZE bytes\n"
 	"  TEST may be \'ping\' \'transfer\' or \'sink\'\n"
 	"  SIZE indicates the size of transfer <= greybus max payload bytes\n"
@@ -81,12 +81,12 @@ void usage(void)
 	"   -d     debug output\n"
 	"Examples:\n"
 	"  Send 10000 transfers with a packet size of 128 bytes to all active connections\n"
-	"  looptest -t transfer -s 128 -i 10000 -S /sys/bus/greybus/devices/ -D /sys/kernel/debug/gb_loopback/\n"
-	"  looptest -t transfer -s 128 -i 10000 -m 0\n"
+	"  loopback_test -t transfer -s 128 -i 10000 -S /sys/bus/greybus/devices/ -D /sys/kernel/debug/gb_loopback/\n"
+	"  loopback_test -t transfer -s 128 -i 10000 -m 0\n"
 	"  Send 10000 transfers with a packet size of 128 bytes to connection 1 and 4\n"
-	"  looptest -t transfer -s 128 -i 10000 -m 9\n"
-	"  looptest -t ping -s 0 128 -i -S /sys/bus/greybus/devices/ -D /sys/kernel/debug/gb_loopback/\n"
-	"  looptest -t sink -s 2030 -i 32768 -S /sys/bus/greybus/devices/ -D /sys/kernel/debug/gb_loopback/\n");
+	"  loopback_test -t transfer -s 128 -i 10000 -m 9\n"
+	"  loopback_test -t ping -s 0 128 -i -S /sys/bus/greybus/devices/ -D /sys/kernel/debug/gb_loopback/\n"
+	"  loopback_test -t sink -s 2030 -i 32768 -S /sys/bus/greybus/devices/ -D /sys/kernel/debug/gb_loopback/\n");
 	abort();
 }
 
