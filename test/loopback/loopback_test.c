@@ -77,6 +77,7 @@ void usage(void)
 	"   -s     size of data packet to send during test - defaults to zero\n"
 	"   -m     mask - a bit mask of connections to include example: -m 8 = 4th connection -m 9 = 1st and 4th connection etc\n"
 	"                 default is zero which means broadcast to all connections\n"
+	"   -c     Add a test description to the generated CSV file\n"
 	"   -v     verbose output\n"
 	"   -d     debug output\n"
 	"Examples:\n"
@@ -188,9 +189,10 @@ void log_csv_error(int len, int err)
 		strerror(err));
 }
 
-void __log_csv(const char *test_name, int size, int iteration_max,
-	       int fd, struct tm *tm, const char *dbgfs_entry,
-	       const char *sys_pfx, const char *postfix)
+void __log_csv(const char *test_name, const char *test_desc, int size,
+	       int iteration_max, int fd, struct tm *tm,
+	       const char *dbgfs_entry, const char *sys_pfx,
+	       const char *postfix)
 {
 	char buf[CSV_MAX_LINE];
 	extern int errno;
@@ -237,13 +239,13 @@ void __log_csv(const char *test_name, int size, int iteration_max,
 		       tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
 		       tm->tm_hour, tm->tm_min, tm->tm_sec);
 	len += snprintf(&buf[len], sizeof(buf) - len,
-			"%s,%s,%u,%u,%u,%u,%u,%f,%u,%u,%u,%f,%u,%u,%u,%f,%u,%u,%u,%f,%u",
-			test_name, sys_pfx, size, iteration_max, error,
-			request_min, request_max, request_avg, request_jitter,
-			latency_min, latency_max, latency_avg, latency_jitter,
-			latency_gb_min, latency_gb_max, latency_gb_avg, latency_gb_jitter,
-			throughput_min, throughput_max, throughput_avg,
-			throughput_jitter);
+			"%s,%s,%s,%u,%u,%u,%u,%u,%f,%u,%u,%u,%f,%u,%u,%u,%f,%u,%u,%u,%f,%u",
+			test_desc, test_name, sys_pfx, size, iteration_max,
+			error, request_min, request_max, request_avg,
+			request_jitter, latency_min, latency_max, latency_avg,
+			latency_jitter, latency_gb_min, latency_gb_max,
+			latency_gb_avg, latency_gb_jitter, throughput_min,
+			throughput_max, throughput_avg, throughput_jitter);
 	write(fd, buf, len);
 
 	/* print basic metrics to stdout - requested feature add */
@@ -273,8 +275,8 @@ void __log_csv(const char *test_name, int size, int iteration_max,
 
 }
 
-void log_csv(const char *test_name, int size, int iteration_max,
-	     const char *sys_pfx, uint32_t mask)
+void log_csv(const char *test_name, const char *test_desc, int size,
+	     int iteration_max, const char *sys_pfx, uint32_t mask)
 {
 	int fd, j, i;
 	struct tm tm;
@@ -282,8 +284,8 @@ void log_csv(const char *test_name, int size, int iteration_max,
 	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 	char buf[MAX_SYSFS_PATH];
 	static const char csvheader[] =
-		"Date,GB Operation,GB Device,Payload (B),Iterations,Error,"
-		"Min Requests/s,Max Requests/s,Avg Requests/s,"
+		"Date,Test Description,GB Operation,GB Device,Payload (B),"
+		"Iterations,Error,Min Requests/s,Max Requests/s,Avg Requests/s,"
 		"Requests/sec Jitter, Min Latency (us),Max Latency (us),"
 		"Avg Latency (us),Latency Jitter (us),GB-only Min Latency (ns),"
 		"GB-only Max Latency (ns),GB-only Avg Latency (ns),"
@@ -321,9 +323,9 @@ void log_csv(const char *test_name, int size, int iteration_max,
 	}
 	for (j = 0, i = 0; j < lb_entries; j++) {
 		if (lb_name[j].module_node || mask & (1 << i) || (!mask))
-			__log_csv(test_name, size, iteration_max, fd, &tm,
-				  lb_name[j].dbgfs_entry, lb_name[j].sysfs_entry,
-				  lb_name[j].postfix);
+			__log_csv(test_name, test_desc, size, iteration_max,
+				  fd, &tm, lb_name[j].dbgfs_entry,
+				  lb_name[j].sysfs_entry, lb_name[j].postfix);
 		if (!lb_name[j].module_node)
 			i++;
 	}
@@ -393,8 +395,9 @@ baddir:
 	return ret;
 }
 
-void loopback_run(const char *test_name, int size, int iteration_max,
-		  const char *sys_prefix, const char *dbgfs_prefix, uint32_t mask)
+void loopback_run(const char *test_name, const char *test_desc, int size,
+		  int iteration_max, const char *sys_prefix,
+		  const char *dbgfs_prefix, uint32_t mask)
 {
 	char buf[MAX_SYSFS_PATH];
 	char inotify_buf[0x800];
@@ -507,7 +510,8 @@ void loopback_run(const char *test_name, int size, int iteration_max,
 	if (err)
 		printf("\nError executing test\n");
 	else
-		log_csv(test_name, size, iteration_max, sys_pfx, mask);
+		log_csv(test_name, test_desc, size, iteration_max, sys_pfx,
+			mask);
 }
 
 int main(int argc, char *argv[])
@@ -519,8 +523,9 @@ int main(int argc, char *argv[])
 	int iteration_count = 0;
 	char *sysfs_prefix = "/sys/bus/greybus/devices/";
 	char *debugfs_prefix = "/sys/kernel/debug/gb_loopback/";
+	char *test_desc = "";
 
-	while ((o = getopt(argc, argv, "t:s:i:S:D:m:v::d::")) != -1) {
+	while ((o = getopt(argc, argv, "t:s:i:S:D:m:c:v::d::")) != -1) {
 		switch (o) {
 		case 't':
 			test = optarg;
@@ -540,6 +545,9 @@ int main(int argc, char *argv[])
 		case 'm':
 			mask = atol(optarg);
 			break;
+		case 'c':
+			test_desc = optarg;
+			break;
 		case 'v':
 			verbose = 1;
 			break;
@@ -555,7 +563,8 @@ int main(int argc, char *argv[])
 	if (test == NULL || iteration_count == 0)
 		usage();
 
-	loopback_run(test, size, iteration_count, sysfs_prefix, debugfs_prefix, mask);
+	loopback_run(test, test_desc, size, iteration_count, sysfs_prefix,
+		     debugfs_prefix, mask);
 	if (lb_name)
 		free(lb_name);
 	return 0;
