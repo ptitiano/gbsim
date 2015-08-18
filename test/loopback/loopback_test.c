@@ -281,6 +281,16 @@ void log_csv(const char *test_name, int size, int iteration_max,
 	time_t t;
 	mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 	char buf[MAX_SYSFS_PATH];
+	static const char csvheader[] =
+		"Date,GB Operation,GB Device,Payload (B),Iterations,Error,"
+		"Min Requests/s,Max Requests/s,Avg Requests/s,"
+		"Requests/sec Jitter, Min Latency (us),Max Latency (us),"
+		"Avg Latency (us),Latency Jitter (us),GB-only Min Latency (ns),"
+		"GB-only Max Latency (ns),GB-only Avg Latency (ns),"
+		"GB-only Latency Jitter (ns),Min Throughput (B/s),"
+		"Max Throughput (B/s),Avg Throughput (B/s),"
+		"Throughput Jitter (B/s)";
+	off_t offset;
 
 	t = time(NULL);
 	tm = *localtime(&t);
@@ -298,6 +308,16 @@ void log_csv(const char *test_name, int size, int iteration_max,
 	if (fd < 0) {
 		fprintf(stderr, "unable to open %s for appendation\n", buf);
 		abort();
+	}
+	/* Add header to new CSV file */
+	offset = lseek(fd, 0, SEEK_END);
+	if (!offset) {
+		write(fd, csvheader, sizeof(csvheader));
+		for (i = 1; i <= iteration_max; i++) {
+			snprintf(buf, sizeof(buf), ",Latency #%u (us)", i);
+			write(fd, buf, strlen(buf));
+		}
+		write(fd, "\n", 1);
 	}
 	for (j = 0, i = 0; j < lb_entries; j++) {
 		if (lb_name[j].module_node || mask & (1 << i) || (!mask))
