@@ -285,7 +285,7 @@ void log_csv(const char *test_name, const char *test_desc, int size,
 	/* Add header to new CSV file */
 	offset = lseek(fd, 0, SEEK_END);
 	if (!offset) {
-		write(fd, csvheader, sizeof(csvheader));
+		write(fd, csvheader, sizeof(csvheader) - 1);
 		for (i = 1; i <= iteration_max; i++) {
 			snprintf(buf, sizeof(buf), ",Latency #%u (us)", i);
 			write(fd, buf, strlen(buf));
