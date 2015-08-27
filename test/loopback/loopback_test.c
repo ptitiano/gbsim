@@ -126,23 +126,6 @@ int read_sysfs_int_fd(int fd, const char *sys_pfx, const char *postfix, const ch
 	return atoi(buf);
 }
 
-float read_sysfs_float_fd(int fd, const char *sys_pfx, const char *postfix, const char *node)
-{
-	char buf[SYSFS_MAX_INT];
-
-	if (read(fd, buf, sizeof(buf)) < 0) {
-		if (postfix)
-			fprintf(stderr, "unable to read from %s%s_%s %s\n", sys_pfx, node,
-				postfix, strerror(errno));
-		else
-			fprintf(stderr, "unable to read from %s%s %s\n", sys_pfx, node,
-				strerror(errno));
-		close(fd);
-		abort();
-	}
-	return atof(buf);
-}
-
 int read_sysfs_int(const char *sys_pfx, const char *postfix, const char *node)
 {
 	extern int errno;
@@ -150,18 +133,6 @@ int read_sysfs_int(const char *sys_pfx, const char *postfix, const char *node)
 
 	fd = open_sysfs(sys_pfx, postfix, node, O_RDONLY);
 	val = read_sysfs_int_fd(fd, sys_pfx, postfix, node);
-	close(fd);
-	return val;
-}
-
-float read_sysfs_float(const char *sys_pfx, const char *postfix, const char *node)
-{
-	extern int errno;
-	int fd;
-	float val;
-
-	fd = open_sysfs(sys_pfx, postfix, node, O_RDONLY);
-	val = read_sysfs_float_fd(fd, sys_pfx, postfix, node);
 	close(fd);
 	return val;
 }
@@ -197,7 +168,7 @@ void __log_csv(const char *test_name, const char *test_desc, int size,
 	char buf[CSV_MAX_LINE];
 	extern int errno;
 	int error, fd_dev, len;
-	float request_avg, latency_avg, latency_gb_avg, throughput_avg;
+	int request_avg, latency_avg, latency_gb_avg, throughput_avg;
 	int request_min, request_max, request_jitter;
 	int latency_min, latency_max, latency_jitter;
 	int latency_gb_min, latency_gb_max, latency_gb_jitter;
@@ -216,16 +187,16 @@ void __log_csv(const char *test_name, const char *test_desc, int size,
 	error = read_sysfs_int(sys_pfx, postfix, "error");
 	request_min = read_sysfs_int(sys_pfx, postfix, "requests_per_second_min");
 	request_max = read_sysfs_int(sys_pfx, postfix, "requests_per_second_max");
-	request_avg = read_sysfs_float(sys_pfx, postfix, "requests_per_second_avg");
+	request_avg = read_sysfs_int(sys_pfx, postfix, "requests_per_second_avg");
 	latency_min = read_sysfs_int(sys_pfx, postfix, "latency_min");
 	latency_max = read_sysfs_int(sys_pfx, postfix, "latency_max");
-	latency_avg = read_sysfs_float(sys_pfx, postfix, "latency_avg");
+	latency_avg = read_sysfs_int(sys_pfx, postfix, "latency_avg");
 	latency_gb_min = read_sysfs_int(sys_pfx, postfix, "latency_gb_min");
 	latency_gb_max = read_sysfs_int(sys_pfx, postfix, "latency_gb_max");
-	latency_gb_avg = read_sysfs_float(sys_pfx, postfix, "latency_gb_avg");
+	latency_gb_avg = read_sysfs_int(sys_pfx, postfix, "latency_gb_avg");
 	throughput_min = read_sysfs_int(sys_pfx, postfix, "throughput_min");
 	throughput_max = read_sysfs_int(sys_pfx, postfix, "throughput_max");
-	throughput_avg = read_sysfs_float(sys_pfx, postfix, "throughput_avg");
+	throughput_avg = read_sysfs_int(sys_pfx, postfix, "throughput_avg");
 
 	/* derive jitter */
 	request_jitter = request_max - request_min;
@@ -239,7 +210,7 @@ void __log_csv(const char *test_name, const char *test_desc, int size,
 		       tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
 		       tm->tm_hour, tm->tm_min, tm->tm_sec);
 	len += snprintf(&buf[len], sizeof(buf) - len,
-			"%s,%s,%s,%u,%u,%u,%u,%u,%f,%u,%u,%u,%f,%u,%u,%u,%f,%u,%u,%u,%f,%u",
+			"%s,%s,%s,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u",
 			test_desc, test_name, sys_pfx, size, iteration_max,
 			error, request_min, request_max, request_avg,
 			request_jitter, latency_min, latency_max, latency_avg,
